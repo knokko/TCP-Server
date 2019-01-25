@@ -56,7 +56,7 @@ public abstract class TCPServerSocket<State> implements Runnable {
 	public TCPServerSocket(BitProtocol<Handler> listener) {
 		this.listener = listener;
 		clientHandlers = new ArrayList<Handler>();
-		random = new PseudoRandom();
+		random = new PseudoRandom(PseudoRandom.Configuration.LEGACY);
 	}
 
 	public void start(int port) {
