@@ -36,6 +36,7 @@ import nl.knokko.util.bits.BitHelper;
 import nl.knokko.util.bits.BitOutput;
 import nl.knokko.util.bits.ByteArrayBitInput;
 import nl.knokko.util.bits.ByteArrayBitOutput;
+import nl.knokko.util.hashing.encryptor.Encryptor;
 import nl.knokko.util.protocol.BitProtocol;
 import nl.knokko.util.random.PseudoRandom;
 
@@ -135,6 +136,9 @@ public abstract class TCPServerSocket<State> implements Runnable {
 		private final State state;
 
 		private OutputStream output;
+		
+		private Encryptor encryptor;
+		private Encryptor decryptor;
 
 		public Handler(Socket socket, State state) {
 			this.socket = socket;
@@ -147,6 +151,14 @@ public abstract class TCPServerSocket<State> implements Runnable {
 
 		public Socket getClient() {
 			return socket;
+		}
+		
+		public void setEncryptor(Encryptor newEncryptor) {
+			encryptor = newEncryptor;
+		}
+		
+		public void setDecryptor(Encryptor newDecryptor) {
+			decryptor = newDecryptor;
 		}
 
 		@Override
@@ -179,6 +191,12 @@ public abstract class TCPServerSocket<State> implements Runnable {
 					}
 					byte[] inputBytes = new byte[size];
 					input.read(inputBytes);
+					if (decryptor != null) {
+						inputBytes = decryptor.decrypt(inputBytes);
+						if (inputBytes == null) {
+							stop("Can't decrypt message from client");
+						}
+					}
 					listener.process(new ByteArrayBitInput(inputBytes), this);
 					size1 = input.read();
 				}
@@ -227,6 +245,9 @@ public abstract class TCPServerSocket<State> implements Runnable {
 						output.write(
 								new byte[] { BitHelper.int0(messageBytes.length), BitHelper.int1(messageBytes.length),
 										BitHelper.int2(messageBytes.length), BitHelper.int3(messageBytes.length) });
+					}
+					if (encryptor != null) {
+						messageBytes = encryptor.encrypt(messageBytes);
 					}
 					output.write(messageBytes);
 				} catch (IOException ioex) {
